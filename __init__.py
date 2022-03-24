@@ -15,33 +15,31 @@ import fasttext
 import fasttext.util
 from nltk.corpus import stopwords
 
-from util import whi, red, yel
+from util import whi, red, yel, text_formatter
 tqdm.pandas()
-
-# todo :
-# remove akp warnings
-# acronym replacement?
-# create repo
-# mention in AnnA
-# add requirements
-# ignore suspended cards
 
 
 class SemanticSearcher:
-    def __init__(self, profiles, user_input, sw_lang):
-        self.profiles = profiles
-        self.cache_fp = Path("anki_vectors_cache.json.gzip")
+    def __init__(self, profiles, user_input, sw_lang, rebuild):
+        # misc settings:
         self.keep_OCR = True
+        self.compress_arg = None  # {'method': 'gzip', 'compresslevel': 9}
+        # set to None to disable compression, which is faster but bigger
+        self.cache_fp = Path("anki_vectors_cache.json.gzip")
+
+        # init values:
         self.stops = set()
         for lang in sw_lang:
             [self.stops.add(w) for w in stopwords.words(lang)]
+
+        # load vectorizer
         self.v = Vectorizer('cc.en.300._ignore_backups_.bin', self.stops)
 
+        # start of the program
         yel("Copying anki profiles")
         cached_db = []
         Path.mkdir(Path("cache"), exist_ok=True)
         for p in profiles:
-            print(p)
             original_db = akp.find_db(user=p)
             new_name = f"anki_profile_{p}.cache".replace(" ", "_")
             cached_db.append(shutil.copy(original_db, f"./cache/{new_name}"))
@@ -49,15 +47,14 @@ class SemanticSearcher:
         if len(cached_db) != len(profiles):
             raise Exception
 
-        yel("Loading anki profiles")
+        yel("Loading anki profiles...", end=" ")
         col_notes = []
         for i in range(len(profiles)):
-            col_notes.append(akp.Collection(cached_db[i]).notes[["nflds", "ntags", "nmod"]])
+            col_notes.append(akp.Collection(cached_db[i]).notes[["nflds", "nmod"]])
             for j in col_notes[i].index:
                 col_notes[i].at[j, "pid"] = f"{profiles[i]}_{j}"
             col_notes[i] = col_notes[i].set_index("pid")
 
-        yel("Combining profiles...", end=" ")
         self.col = pd.concat(col_notes, axis=0, join="inner")
 
         if len(self.col.index) != sum([len(c.index) for c in col_notes]):
@@ -68,28 +65,46 @@ class SemanticSearcher:
         else:
             yel("Success!")
 
-        if not self.cache_fp.exists():
+        if rebuild:
+            yel("Removing old cache and build a new one from scratch...")
+            Path.unlink(self.cache_fp, missing_ok=True)
+            self._update_cache(create=True)
+        elif not self.cache_fp.exists():
             self._update_cache(create=True)
         else:
             self._update_cache()
 
-        if user_input is None:
-            self.wait_for_input()
-        else:
+        if user_input is not None:
             self._process_input(user_input)
+        else:
+            self.wait_for_input()
+
+        while True:
+            self.wait_for_input()
 
     def _process_input(self, user_input):
         "search for notes based on user input, then wait for more inputs"
+        cache = self.cache
+        col = self.col
+        cache["dist"] = 0
         vec = self.v.get_vec(user_input)
-        self.cache["dist"] = self.cache["vec"].progress_apply(
-            lambda x: pairwise_distances(vec, x), metric="cosine")
+        vecs = cache.drop(columns=["dist", "nmod"])
 
-        self.wait_for_input()
+        cache["dist"] = pairwise_distances(vecs, vec, metric="cosine", j_jobs=-1)
+        index = cache.index
+        good_order = sorted(index,
+                            key=lambda row: cache.loc[row, "dist"],
+                            reverse=False)
+
+        pd.set_option('display.max_colwidth', None)
+        for n, i in enumerate(good_order[0:10]):
+            print(f"\n{n+1}) {i}: {str(self._call_tp(col.loc[i, 'nflds']))[0:300]}")
+        pd.reset_option('display.max_colwidth')
 
 
     def wait_for_input(self):
-        red("\nInput? (q to quit)\r>")
-        ans = input()
+        red("\nSearch query? (q to quit)")
+        ans = input(">")
         if ans in ["q", "quit", "exit"]:
             raise SystemExit()
         else:
@@ -99,108 +114,54 @@ class SemanticSearcher:
     def _update_cache(self, create=False):
         """checks modtime of stored values vs loaded collection, update the
         vectors if needed"""
+        vec_list = [f"VEC_{x}" for x in range(0, self.v.ft.get_dimension())]
         if create:
             yel("Local cache not found, creating...")
-            self.cache = pd.DataFrame()
+            self.cache = pd.DataFrame(index=self.col.index,
+                    columns=["nmod"] + vec_list,
+                    data=None)
+            self.cache["nmod"] = 0
+            to_update = list(self.col.index)
         else:
-            yel(f"Importing {self.cache_fp}")
-            self.cache = pd.read_json(self.cache_fp)
+            yel(f"Importing {self.cache_fp}...", end=" ")
+            self.cache = pd.read_json(self.cache_fp, compression=self.compress_arg)
+            yel("Success!")
 
-        to_update = []
-        for i in tqdm(self.col.index, desc="Comparing collections to cached values", unit=" note"):
-            if i not in self.cache.index:
-                to_update.append(i)
-            elif self.col.loc[i, "nmod"] != self.cache.loc[i, "nmod"]:
-                to_update.append(i)
+            to_update = []
+            for i in tqdm(self.col.index,
+                          desc="Comparing collections to cached values",
+                          unit=" note"):
+                if (i not in self.cache.index) or \
+                        (self.col.loc[i, "nmod"] != self.cache.loc[i, "nmod"]):
+                    to_update.append(i)
 
         if not to_update:
             yel("Local cache is up to date!")
             return
-        else:
-            red(f"{len(to_update)} notes will be updated.")
 
-        to_update = to_update[0:50]  # testing
-
-        def process(fields):
-            return self._text_formatter(" ".join(fields))
+        red(f"{len(to_update)} notes will be updated.\n")
 
         for note in tqdm(to_update, desc="Processing text", unit=" note"):
-            self.col.at[note, "nflds"] = process(self.col.loc[note, "nflds"])
+            self.col.at[note, "nflds"] = self._call_tp(self.col.loc[note, "nflds"])
 
-        for note in tqdm(to_update, desc="Vectorizing text", unit=" note"):
-            self.col.at[note, "vec"] = self.v.get_vec(self.col.loc[note, "nflds"])
+        self.cache.loc[to_update, vec_list] = np.array([self.v.get_vec(x)
+                for x in tqdm(
+                    self.col.loc[to_update, "nflds"],
+                    desc="Vectorizing text",
+                    unit=" note")
+                ]).reshape(len(to_update), self.v.ft.get_dimension())
+        self.cache.loc[to_update, "nmod"] = self.col.loc[to_update, "nmod"]
 
-        yel(f"Storing vectors to {self.cached_db}...", end=" ")
-        self.col[["vec", "nmod"]].to_json(
-            self.cache_fp,
-            compression={'method': 'gzip', 'compresslevel': 1}
-            )
+        yel(f"Storing vectors to {self.cache_fp}...", end=" ")
+        self.cache.to_json(self.cache_fp, compression=self.compress_arg)
         yel("Done!")
+        return
 
-        yel("Reloading cache...")
-        self.cache = pd.read_json(self.cache_fp)
+    def _call_tp(self, text):
+        if isinstance(text, list):
+            text = " ".join(text)
+        return text_formatter(text, self.keep_OCR)
 
-    def _text_formatter(self, text):
-        """
-        copied from my other repository : AnnA
-        """
-        text = text.replace("&amp;", "&"
-                    ).replace("+++", " important "
-                    ).replace("&nbsp", " "
-                    ).replace("\u001F", " ")
-
-        # remove weird clozes
-        text = re.sub(r"}}{{c\d+::", "", text)
-
-        # remove sound recordings
-        text = re.sub(r"\[sound:.*?\..*?\]", " ", text)
-
-        # duplicate bold and underlined content, as well as clozes
-        text = re.sub(r"\b<u>(.*?)</u>\b", r" \1 \1 ", text,
-                      flags=re.M | re.DOTALL)
-        text = re.sub(r"\b<b>(.*?)</b>\b", r" \1 \1 ", text,
-                      flags=re.M | re.DOTALL)
-        text = re.sub(r"{{c\d+::.*?}}", lambda x: f"{x.group(0)} {x.group(0)}",
-                      text, flags=re.M | re.DOTALL)
-
-        # if blockquote or li or ul, mention that it's a list item
-        # usually indicating a harder card
-        if re.match("</?blockquote/?>|</?li/?>|</?ul/?>|", text, flags=re.M):
-            text += " list list list list list"
-
-        # remove html spaces
-        text = re.sub('\\n|</?div/?>|</?br/?>|</?span/?>|</?li/?>|</?ul/?>', " ", text)
-        text = re.sub('</?blockquote(.*?)>', " ", text)
-
-        # OCR
-        if self.keep_OCR:
-            # keep image title (usually OCR)
-            text = re.sub("<img src=.*? title=\"(.*?)\".*?>",
-                          lambda string: self._store_OCR(string),
-                          text,
-                          flags=re.M | re.DOTALL)
-
-        # cloze
-        text = re.sub(r"{{c\d+?::|}}", "", text)  # remove cloze brackets
-        text = re.sub("::", " ", text)  # cloze hints
-        text = re.sub("{{c", "", text)  # missed cloze?
-
-        # misc
-        text = re.sub(r'[a-zA-Z0-9-]+\....', " ", text)  # media file name
-        text = re.sub("<a href.*?</a>", " ", text)  # html links
-        text = re.sub(r'https?://\S*?', " ", text)  # plaintext links
-        text = re.sub("</?su[bp]>", "", text) # exponant or indices
-        text = re.sub(r"\[\d*\]", "", text)  # wiki style citation
-
-        text = re.sub("<.*?>", "", text)  # remaining html tags
-        text = text.replace("&gt", "").replace("&lt", "").replace("<", "").replace(">", "").replace("'", " ")  # misc + french apostrophe
-
-
-        # misc
-        text = " ".join(text.split())  # multiple spaces
-        text = re.sub(r"\b[a-zA-Z]'(\w{2,})", r"\1", text)  # misc etc
-
-        return text
 
 
 class Vectorizer:
@@ -252,7 +213,7 @@ class Vectorizer:
                         if x not in self.stops
                         ],
                     axis=0).reshape(1, -1),
-                norm='l2')
+                norm='l1')
 
 
 if __name__ == "__main__":
@@ -267,10 +228,16 @@ if __name__ == "__main__":
     parser.add_argument("--query",
                         nargs=1,
                         metavar="query",
-                        dest='query',
+                        dest='user_input',
                         type=str,
                         required=False,
                         help="Search query")
+    parser.add_argument("--rebuild",
+                        dest='rebuild',
+                        action="store_true",
+                        required=False,
+                        default=False,
+                        help="deletes old cache and start from scratch")
     parser.add_argument("--sw_lang",
                         nargs=1,
                         metavar="STOPWORDS_LANG",
@@ -283,6 +250,5 @@ if __name__ == "__main__":
     whi(f"Launched ASS with args :\r{args}")
     args["profiles"] = json.loads(args["profiles"][0])
     args["sw_lang"] = json.loads(args["sw_lang"])
-    SemanticSearcher(profiles=args["profiles"],
-                     user_input=args["query"],
-                     sw_lang=args["sw_lang"])
+    args["user_input"] = args["user_input"][0]
+    SemanticSearcher(**args)

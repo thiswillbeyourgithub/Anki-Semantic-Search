@@ -1,3 +1,4 @@
 cc.en.300._ignore_backups_.bin
 __pycache__
 cache
+anki_vectors_cache.json.gzip
