@@ -1,1 +1,3 @@
-./cc.en.300._ignore_backups_.bin
+cc.en.300._ignore_backups_.bin
+__pycache__
+cache
