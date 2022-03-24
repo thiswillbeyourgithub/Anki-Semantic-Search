@@ -110,14 +110,14 @@ class SemanticSearcher:
         for i in tqdm(self.col.index, desc="Comparing collections to cached values", unit=" note"):
             if i not in self.cache.index:
                 to_update.append(i)
-                red(f"Note {i} is missing from cache")
             elif self.col.loc[i, "nmod"] != self.cache.loc[i, "nmod"]:
                 to_update.append(i)
-                red(f"Note {i} is outdated")
-        
+
         if not to_update:
             yel("Local cache is up to date!")
             return
+        else:
+            red(f"{len(to_update)} notes will be updated.")
 
         to_update = to_update[0:50]  # testing
 
