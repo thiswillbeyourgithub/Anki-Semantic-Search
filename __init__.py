@@ -1,5 +1,5 @@
 import re
-import json
+from pprint import pprint
 from tqdm import tqdm
 from pathlib import Path
 import shutil
@@ -219,7 +219,7 @@ class Vectorizer:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--profiles",
-                        nargs=1,
+                        nargs="+",
                         metavar="PROFILES",
                         dest='profiles',
                         type=str,
@@ -239,16 +239,15 @@ if __name__ == "__main__":
                         default=False,
                         help="deletes old cache and start from scratch")
     parser.add_argument("--sw_lang",
-                        nargs=1,
+                        nargs="+",
                         metavar="STOPWORDS_LANG",
                         dest='sw_lang',
                         type=str,
                         required=False,
-                        default='["french", "english", "spanish"]',
+                        default=["french", "english", "spanish"],
                         help="Language of reference, used to ignore stop words")
     args = parser.parse_args().__dict__
-    args["profiles"] = json.loads(args["profiles"][0])
-    args["sw_lang"] = json.loads(args["sw_lang"])
-    args["user_input"] = args["user_input"][0]
-    whi(f"Launched Anki SemSearch with arguments :\r{args}")
+    whi(f"Launched Anki SemSearch with arguments :")
+    pprint(args)
+
     SemanticSearcher(**args)
