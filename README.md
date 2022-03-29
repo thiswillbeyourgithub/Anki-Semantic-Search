@@ -6,6 +6,7 @@ Use AI (fastText's multilingual word vectors) to search through your anki notes.
 ## FAQ
 * What is it and how does it work?
 * Why should I use this?
+* **This looks awesome! Are you working on other things like that?** Yes and thank you! Another project of mine uses AI to reduce your daily workload on anki : [I call it AnnA (Anki neuronal Appendix)](https://github.com/thiswillbeyourgithub/AnnA_Anki_neuronal_Appendix)
 
 ## Usage
 
