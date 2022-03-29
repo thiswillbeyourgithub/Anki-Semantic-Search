@@ -25,5 +25,4 @@ Use AI (fastText's multilingual word vectors) to search through your anki notes.
 * add requirements file
 * add argument to load other fastText models
 * add argument to ignore suspended cards
-* mention this project in AnnA repository
 
