@@ -1,5 +1,5 @@
-# Anki Semantic Searcher using AI
-Search your anki collection with semantic queries using fastText's word vectors.
+# Anki SemSearch: do AI powered semantic search on your anki collection(s)
+Use fastText's multilingual word vectors to search through your anki notes.
 
 ## FAQ
 * What is it and how does it work?

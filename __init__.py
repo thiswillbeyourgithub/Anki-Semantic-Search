@@ -247,8 +247,8 @@ if __name__ == "__main__":
                         default='["french", "english", "spanish"]',
                         help="Language of reference, used to ignore stop words")
     args = parser.parse_args().__dict__
-    whi(f"Launched ASS with args :\r{args}")
     args["profiles"] = json.loads(args["profiles"][0])
     args["sw_lang"] = json.loads(args["sw_lang"])
     args["user_input"] = args["user_input"][0]
+    whi(f"Launched Anki SemSearch with arguments :\r{args}")
     SemanticSearcher(**args)
