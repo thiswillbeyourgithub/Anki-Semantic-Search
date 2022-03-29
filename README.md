@@ -1,6 +1,8 @@
 # Anki SemSearch: do AI powered semantic search on your anki collection(s)
 Use fastText's multilingual word vectors to search through your anki notes.
 
+# This is still a work in progress!
+
 ## FAQ
 * What is it and how does it work?
 * Why should I use this?
