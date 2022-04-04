@@ -19,10 +19,9 @@ Use AI (fastText's multilingual word vectors) to search through your anki notes.
 ## TODO
 * prettier results
 * shortcut to open in anki browser
-* remove warnings from ankipandas
-* remove warnings from using .at at the beginning
+* remove warnings from ankipandas and pandas
 * replace acronyms?
 * add requirements file
 * add argument to load other fastText models
-* add argument to ignore suspended cards
+* add argument to ignore suspended cards or not
 
