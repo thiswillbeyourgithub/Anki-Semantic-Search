@@ -84,6 +84,9 @@ class SemanticSearcher:
 
     def _process_input(self, user_input):
         "search for notes based on user input, then wait for more inputs"
+        if isinstance(user_input, list):
+            assert len(user_input) == 1
+            user_input = user_input[0]
         cache = self.cache
         col = self.col
         cache["dist"] = 0
