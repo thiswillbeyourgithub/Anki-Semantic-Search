@@ -208,15 +208,17 @@ class Vectorizer:
         compute vector representation of each word of the note, then pool
         them to represent the complete note text
         """
-        return normalize(
-                np.sum(
-                    [
-                        self.memoized_vec(x)
-                        for x in self.preprocessor(string)
-                        if x not in self.stops
-                        ],
-                    axis=0).reshape(1, -1),
-                norm='l1')
+        out = normalize(
+              np.sum(
+                  [
+                      self.memoized_vec(x)
+                      for x in self.preprocessor(string)
+                      if x not in self.stops
+                      ],
+                  axis=0).reshape(1, -1),
+              norm='l1',
+              copy=False)
+        return out
 
 
 if __name__ == "__main__":
