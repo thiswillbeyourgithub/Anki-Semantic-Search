@@ -90,10 +90,14 @@ class SemanticSearcher:
         cache = self.cache
         col = self.col
         cache["dist"] = 0
-        vec = self.v.get_vec(user_input)
         vecs = cache.drop(columns=["dist", "nmod"])
+        vec = self.v.get_vec(user_input)
 
-        cache["dist"] = pairwise_distances(vecs, vec, metric="cosine", j_jobs=-1)
+        cache["dist"] = pairwise_distances(vecs.values,
+                                           vec,
+                                           metric="cosine",
+                                           n_jobs=-1)
+
         index = cache.index
         good_order = sorted(index,
                             key=lambda row: cache.loc[row, "dist"],
@@ -117,7 +121,7 @@ class SemanticSearcher:
     def _update_cache(self, create=False):
         """checks modtime of stored values vs loaded collection, update the
         vectors if needed"""
-        vec_list = [f"VEC_{x}" for x in range(0, self.v.ft.get_dimension())]
+        vec_list = [f"VEC_{x}" for x in range(1, self.v.ft.get_dimension() + 1)]
         if create:
             yel("Local cache not found, creating...")
             self.cache = pd.DataFrame(index=self.col.index,
@@ -144,15 +148,31 @@ class SemanticSearcher:
 
         red(f"{len(to_update)} notes will be updated.\n")
 
+        to_drop = []
         for note in tqdm(to_update, desc="Processing text", unit=" note"):
-            self.col.at[note, "nflds"] = self._call_tp(self.col.loc[note, "nflds"])
+            self.col.at[note, "nflds"] = self._call_tp(self.col.loc[note, "nflds"]).strip()
+            if self.col.loc[note, "nflds"] == "":
+                to_drop.append(note)
 
-        self.cache.loc[to_update, vec_list] = np.array([self.v.get_vec(x)
-                for x in tqdm(
-                    self.col.loc[to_update, "nflds"],
-                    desc="Vectorizing text",
-                    unit=" note")
-                ]).reshape(len(to_update), self.v.ft.get_dimension())
+        if to_drop:
+            for drop in to_drop:
+                red(f"Removed empty note #{drop}")
+                self.col.drop(drop, inplace=True)
+                to_update.remove(drop)
+            red(f"{len(to_drop)} notes were removed.")
+
+        vecs = [self.v.get_vec(self.col.loc[ind, "nflds"]) for ind in tqdm(to_update, desc="Vectorizing") ]
+        for i, v in enumerate(vecs):
+            if v.shape != (1, self.v.ft.get_dimension()):
+                red(f"Invalid vectors : note {to_update[i]}")
+                self.col.at[to_update[i], "nflds"] = "Invalid vector :     " + self.col.loc[to_update[i], "nflds"]
+                vecs[i] = self.v.get_vec(self.col.loc[to_update[i], "nflds"])
+
+        ar = np.array(vecs).reshape( (len(to_update), self.v.ft.get_dimension()) )
+
+        for vec_n in tqdm(range(self.v.ft.get_dimension())):
+            self.cache.loc[to_update, vec_list[vec_n]] = ar[:, vec_n]
+
         self.cache.loc[to_update, "nmod"] = self.col.loc[to_update, "nmod"]
 
         yel(f"Storing vectors to {self.cache_fp}...", end=" ")
