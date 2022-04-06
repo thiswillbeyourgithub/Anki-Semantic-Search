@@ -179,6 +179,11 @@ class SemanticSearcher:
 
         yel(f"Updated {len(already_present)} notes, added {len(to_add)} new notes.")
 
+        old_shape = self.cache.values.shape[0]
+        self.cache = self.cache.dropna()
+        if self.cache.shape[0] != old_shape:
+            red(f"Had to drop {old_shape-self.cache.shape[0]} rows that were NA.")
+
         self.cache.loc[to_update, "nmod"] = self.col.loc[to_update, "nmod"]
 
         yel(f"Storing vectors to {self.cache_fp}...", end=" ")
