@@ -170,8 +170,14 @@ class SemanticSearcher:
 
         ar = np.array(vecs).reshape( (len(to_update), self.v.ft.get_dimension()) )
 
-        for vec_n in tqdm(range(self.v.ft.get_dimension())):
+        already_present = [x for x in to_update if x in self.cache.index]
+        to_add = [x for x in to_update if x not in self.cache.index]
+        for x in to_add:
+            self.cache.loc[x, :] = 0
+        for vec_n in range(self.v.ft.get_dimension()):
             self.cache.loc[to_update, vec_list[vec_n]] = ar[:, vec_n]
+
+        yel(f"Updated {len(already_present)} notes, added {len(to_add)} new notes.")
 
         self.cache.loc[to_update, "nmod"] = self.col.loc[to_update, "nmod"]
 
