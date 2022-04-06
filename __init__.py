@@ -247,7 +247,7 @@ class Vectorizer:
                       if x not in self.stops
                       ],
                   axis=0).reshape(1, -1),
-              norm='l1',
+              norm='l2',
               copy=False)
         return out
 
