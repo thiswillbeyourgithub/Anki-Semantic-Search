@@ -93,7 +93,7 @@ class SemanticSearcher:
         vecs = cache.drop(columns=["dist", "nmod"])
         vec = self.v.get_vec(user_input)
 
-        cache["dist"] = pairwise_distances(vecs.values,
+        cache["dist"] = pairwise_distances(vecs,
                                            vec,
                                            metric="cosine",
                                            n_jobs=-1)
