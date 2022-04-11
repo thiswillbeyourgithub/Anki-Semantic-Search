@@ -69,6 +69,7 @@ class SemanticSearcher:
         else:
             yel("Success!")
 
+        self.async_loader.join()
         if rebuild:
             yel("Removing old cache and build a new one from scratch...")
             Path.unlink(self.cache_fp, missing_ok=True)
@@ -100,7 +101,6 @@ class SemanticSearcher:
         col = self.col
         cache["dist"] = 0
         vecs = cache.drop(columns=["dist", "nmod"])
-        self.async_loader.join()
         vec = self.v.get_vec(user_input)
 
         cache["dist"] = pairwise_distances(vecs,
