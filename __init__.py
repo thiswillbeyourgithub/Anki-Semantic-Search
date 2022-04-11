@@ -52,18 +52,20 @@ class SemanticSearcher:
             raise Exception
 
         yel("Loading anki profiles...", end=" ")
-        col_notes = []
+        self.col_notes = []
+        self.threads = []
         for i in range(len(profiles)):
-            col_notes.append(akp.Collection(cached_db[i]).notes[["nflds", "nmod"]])
-            for j in col_notes[i].index:
-                col_notes[i].at[j, "pid"] = f"{profiles[i]}_{j}"
-            col_notes[i] = col_notes[i].set_index("pid")
+            t = threading.Thread(target = self._profile_loader,
+                                 args=(cached_db, profiles, i))
+            t.start()
+            self.threads.append(t)
 
-        self.col = pd.concat(col_notes, axis=0, join="inner")
+        [t.join() for t in self.threads]
+        self.col = pd.concat(self.col_notes, axis=0, join="inner")
 
-        if len(self.col.index) != sum([len(c.index) for c in col_notes]):
+        if len(self.col.index) != sum([len(c.index) for c in self.col_notes]):
             n = len(self.col.index)
-            m = sum([len(c.index) for c in col_notes])
+            m = sum([len(c.index) for c in self.col_notes])
             red(f"Error during merging: {n} vs {m}")
             raise Exception
         else:
@@ -86,6 +88,15 @@ class SemanticSearcher:
 
         while True:
             self.wait_for_input()
+
+    def _profile_loader(self, cached_db, profiles, i):
+        "loading a profile is slow so use a specific thread"
+        col_notes = akp.Collection(cached_db[i]).notes[["nflds", "nmod"]]
+        for j in col_notes.index:
+            col_notes.at[j, "pid"] = f"{profiles[i]}_{j}"
+        col_notes = col_notes.set_index("pid")
+        self.col_notes.append(col_notes)
+        yel(f"Loaded profile {profiles[i]}")
 
     def _model_loader(self):
         "loading model is slow so use a specific thread"
