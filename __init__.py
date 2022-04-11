@@ -4,6 +4,7 @@ from tqdm import tqdm
 from pathlib import Path
 import shutil
 import argparse
+import threading
 
 import pandas as pd
 import ankipandas as akp
@@ -35,7 +36,8 @@ class SemanticSearcher:
             [self.stops.add(w) for w in stopwords.words(lang)]
 
         # load vectorizer
-        self.v = Vectorizer('cc.en.300._ignore_backups_.bin', self.stops)
+        self.async_loader = threading.Thread(target=self._model_loader)
+        self.async_loader.start()
 
         # start of the program
         yel("Copying anki profiles")
@@ -84,6 +86,10 @@ class SemanticSearcher:
         while True:
             self.wait_for_input()
 
+    def _model_loader(self):
+        "loading model is slow so use a specific thread"
+        self.v = Vectorizer('cc.en.300._ignore_backups_.bin', self.stops)
+
     def _process_input(self, user_input):
         "search for notes based on user input, then wait for more inputs"
         if isinstance(user_input, list):
@@ -94,6 +100,7 @@ class SemanticSearcher:
         col = self.col
         cache["dist"] = 0
         vecs = cache.drop(columns=["dist", "nmod"])
+        self.async_loader.join()
         vec = self.v.get_vec(user_input)
 
         cache["dist"] = pairwise_distances(vecs,
