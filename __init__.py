@@ -61,7 +61,9 @@ class SemanticSearcher:
             self.threads.append(t)
 
         [t.join() for t in self.threads]
+        yel("Merging profiles...", end=" ")
         self.col = pd.concat(self.col_notes, axis=0, join="inner")
+        yel("Done!")
 
         if len(self.col.index) != sum([len(c.index) for c in self.col_notes]):
             n = len(self.col.index)
@@ -96,7 +98,7 @@ class SemanticSearcher:
             col_notes.at[j, "pid"] = f"{profiles[i]}_{j}"
         col_notes = col_notes.set_index("pid")
         self.col_notes.append(col_notes)
-        yel(f"Loaded profile {profiles[i]}")
+        yel(f"{profiles[i]}", end=" ")
 
     def _model_loader(self):
         "loading model is slow so use a specific thread"
@@ -195,7 +197,7 @@ class SemanticSearcher:
         to_add = [x for x in to_update if x not in self.cache.index]
         for x in to_add:
             self.cache.loc[x, :] = 0
-        for vec_n in range(self.v.ft.get_dimension()):
+        for vec_n in tqdm(range(self.v.ft.get_dimension()), desc="Updating", unit=" notes"):
             self.cache.loc[to_update, vec_list[vec_n]] = ar[:, vec_n]
 
         yel(f"Updated {len(already_present)} notes, added {len(to_add)} new notes.")
