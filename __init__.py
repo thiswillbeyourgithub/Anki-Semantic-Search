@@ -16,6 +16,7 @@ import fasttext.util
 from nltk.corpus import stopwords
 
 from util import whi, red, yel, text_formatter
+import prompt_toolkit
 tqdm.pandas()
 
 
@@ -26,6 +27,7 @@ class SemanticSearcher:
         self.compress_arg = None  # {'method': 'gzip', 'compresslevel': 9}
         # set to None to disable compression, which is faster but bigger
         self.cache_fp = Path("anki_vectors_cache.json.gzip")
+        self.last_input = user_input
 
         # init values:
         self.stops = set()
@@ -87,6 +89,7 @@ class SemanticSearcher:
         if isinstance(user_input, list):
             assert len(user_input) == 1
             user_input = user_input[0]
+        self.last_input = user_input
         cache = self.cache
         col = self.col
         cache["dist"] = 0
@@ -111,7 +114,7 @@ class SemanticSearcher:
 
     def wait_for_input(self):
         red("\nSearch query? (q to quit)")
-        ans = input(">")
+        ans = prompt_toolkit.prompt(">", default=self.last_input)
         if ans in ["q", "quit", "exit"]:
             raise SystemExit()
         else:
