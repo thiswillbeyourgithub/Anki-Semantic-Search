@@ -202,6 +202,7 @@ class SemanticSearcher:
         return
 
     def _call_tp(self, text):
+        "call to text processor"
         if isinstance(text, list):
             text = " ".join(text)
         return text_formatter(text, self.keep_OCR)
