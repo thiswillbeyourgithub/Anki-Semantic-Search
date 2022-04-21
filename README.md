@@ -20,8 +20,9 @@ Use AI (fastText's multilingual word vectors) to search through your anki notes.
 * prettier results
 * shortcut to open in anki browser
 * remove warnings from ankipandas and pandas
-* replace acronyms?
+* replace acronyms
 * add requirements file
 * add argument to load other fastText models
 * add argument to ignore suspended cards or not
+* only vectorize words deemed importants according to keyword extraction techniques from TFIDF
 
