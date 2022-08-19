@@ -17,6 +17,8 @@ Use AI (fastText's multilingual word vectors) to search through your anki notes.
 
 
 ## TODO
+* use joblib caching instead of diy solutions
+* investigate wether CLIP is a better vectorizer for this kind of content
 * prettier results
 * shortcut to open in anki browser
 * remove warnings from ankipandas and pandas
