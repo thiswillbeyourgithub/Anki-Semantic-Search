@@ -17,8 +17,8 @@ Use AI (fastText's multilingual word vectors) to search through your anki notes.
 
 
 ## TODO
+* investigate using [Faiss](https://github.com/facebookresearch/faiss/wiki/Getting-started) to speed up the search but orders of magnitude
 * use joblib caching instead of diy solutions
-* investigate wether CLIP is a better vectorizer for this kind of content
 * prettier results
 * shortcut to open in anki browser
 * remove warnings from ankipandas and pandas
@@ -26,5 +26,5 @@ Use AI (fastText's multilingual word vectors) to search through your anki notes.
 * add requirements file
 * add argument to load other fastText models
 * add argument to ignore suspended cards or not
-* only vectorize words deemed importants according to keyword extraction techniques from TFIDF
+* only vectorize words deemed important according to keyword extraction techniques from TFIDF
 
