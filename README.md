@@ -1,3 +1,6 @@
+# This project has been abandonned for a while. but I made a way better tool that allows directly asking questions to your anki database: [DocToolsLLM](https://github.com/thiswillbeyourgithub/DocToolsLLM)
+
+
 # Anki SemSearch: do AI powered semantic search on your anki collection(s)
 Use AI (fastText's multilingual word vectors) to search through your anki notes.
 
