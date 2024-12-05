@@ -1,4 +1,4 @@
-# This project has been abandonned for a while. but I made a way better tool that allows directly asking questions to your anki database: [DocToolsLLM](https://github.com/thiswillbeyourgithub/DocToolsLLM)
+# This project has been abandonned for a while. but I made a way better tool that allows directly asking questions to your anki database: [wdoc](https://github.com/thiswillbeyourgithub/wdoc)
 
 
 # Anki SemSearch: do AI powered semantic search on your anki collection(s)
